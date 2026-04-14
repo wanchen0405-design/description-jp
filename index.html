@@ -1,0 +1,313 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+
+        <title>browser-based experiments</title>
+
+        <!-- fonts from Google fonts -->
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans:400,700|Noto+Serif:400,700|Playfair+Display:700" rel="stylesheet">
+
+        <!-- css -->
+        <link rel="stylesheet" type="text/css" href="styles/styles.css">
+
+        <!-- js dependencies -->
+        <script src="libraries/mustache/mustache.min.js"></script>
+        <script src="libraries/jquery/dist/jquery.min.js"></script>
+        <!-- This doesn't seem to be there on cloudflare -->
+        <script src="libraries/csv-js/csv.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.5/lodash.js"></script>
+
+        <!-- config -->
+        <script src="config/config_deploy.js"></script>
+
+        <!-- views (must be loaded before experiment.js) -->
+        <script src="views/views.js"></script>
+
+        <!-- local js files -->
+        <script src="scripts/main.js"></script>
+        <script src="scripts/experiment.js"></script>
+        <script src="scripts/helpers.js"></script>
+        <script src="scripts/utils.js"></script>
+        <script src="scripts/submit_to_server.js"></script>
+
+        <!-- local trial_info files -->
+        <!-- <script src="trial_info/main_trials.js"></script> -->
+        <script src="trial_info/exp_sample.json"></script>
+
+    </head>
+
+    <body>
+        <noscript>This task requires JavaScript. Please enable JavaScript in your browser and reload the page. For more information on how to do that, please refer to
+            <a href='https://enable-javascript.com' target='_blank'>enable-javascript.com</a>
+        </noscript>
+
+        <!-- views are inserted in main -->
+        <main id='main'>
+            Loading...
+        </main>
+
+
+        <!-- Informed Consent view -->
+        <script id="informed-consent-view" type="text/html">
+            <div class='view'>
+                <h1>{{ title }}</h1>
+                <br>
+                <section class="consent-container">
+                    {{{ consent_text }}}
+                </section>
+                <br>
+                <div class="consent-options">
+                    <p><strong>参加意思の確認</strong></p>
+                    <div class="consent-checkbox">
+                        <input type="radio" id="consent-yes" name="consent" value="yes">
+                        <label for="consent-yes">はい、上記の内容を読み、研究に参加することに同意します</label>
+                    </div>
+                    <div class="consent-checkbox">
+                        <input type="radio" id="consent-no" name="consent" value="no">
+                        <label for="consent-no">いいえ、参加を希望しません</label>
+                    </div>
+                </div>
+                <br>
+                <button id="next" disabled>次へ進む</button>
+            </div>
+        </script>
+
+        <!-- Introduction view -->
+        <script id="intro-view" type="text/html">
+            <div class='view'>
+                <h1 class="view-title">説明</h1>
+                <br>
+                {{# text }}
+                <section class="text-container">
+                    <p class="text">{{{ text }}}</p>
+                </section>
+                {{/ text }}
+                <br>
+                <p id="prolific-id-form">
+                    <label for="prolific-id">Prolific ID をご入力ください</label>
+                    <input type="text" id="prolific-id" />
+                </p>
+                {{# button }}
+                <button id="next" class="nodisplay">{{ button }}</button>
+                {{/ button }}
+                {{^ button }}
+                <button id="next">Next</button>
+                {{/ button }}
+                <br>
+                {{# legal_info }}
+                <section class="text-container">
+                    <hr>
+                    <br>
+                    <p class="legal-text">{{{ legal_info }}}</p>
+                </section>
+                {{/ legal_info }}
+            </div>
+        </script>
+
+        <!-- main view: Description writing -->
+        <script id="main-view" type="text/html">
+            <div class="view">
+    
+                <div id="q1_box">
+                    {{# image_path }}
+                    <div class="picture" style="margin-bottom: 30px; display: block;">
+                        <img src="{{ image_path }}" id="picture" alt="picture" style="max-width: 660px; max-height: 650px; display: block; margin: 0 auto;" />
+                    </div>
+                    {{/ image_path }}
+    
+                <!-- Description question -->
+                <div class="question-box" style="margin-top: 25px; margin-bottom: 8px;">
+                    <p class="question">{{{ instruction }}}</p>
+                    <div style="margin-top: 0px;">
+                        <textarea id="description" style="display: block; max-width: 650px; width: 100%; margin: 0 auto 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></textarea>
+                    </div>
+                </div>
+    
+                <!-- Open-ended, optional short-answer question -->
+                <p style="margin-top: 25px; margin-bottom: 8px;">(任意回答です) この画像について興味深い点や共有したいことがあればご記入ください</p>
+                <textarea id="image_additional_notes" rows="4" style="display: block; max-width: 650px; width: 100%; margin: 0 auto 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></textarea>
+
+                <button id="next">Continue</button>
+
+                <p id="error" class="help-text" style="display: none;">続行する前に、記述を入力してください</p>
+
+            </div>
+        </script>
+
+        <!-- post test view -->
+        <script id="post-test-view" type="text/html">
+    
+            {{# title }}
+            <h1>{{ title }}</h1>
+            {{/ title }}
+            {{# text }}
+            <section class="text-container">
+                <p class="text">{{ text }}</p>
+            </section>
+            {{/ text }}
+            <form>
+            <section class="text-container">
+                <div style="display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 650px; margin: 0 auto;">
+
+                    <div style="margin: 16px 0;">
+                        <p style="margin: 0;">日本の文化について、どの程度知っていますか？<span style="color: red;">*</span></p>
+                        <ul class="answer-container likert" style="margin-top: 6px; font-size: 17px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif;">
+                            <li class="labels1">全く知らない</li>
+                            <li><input type="radio" name="fam_jp" value="1" required /></li>
+                            <li><input type="radio" name="fam_jp" value="2" /></li>
+                            <li><input type="radio" name="fam_jp" value="3" /></li>
+                            <li><input type="radio" name="fam_jp" value="4" /></li>
+                            <li><input type="radio" name="fam_jp" value="5" /></li>
+                            <li><input type="radio" name="fam_jp" value="6" /></li>
+                            <li><input type="radio" name="fam_jp" value="7" /></li>
+                            <li class="labels1">とてもよく知っている</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin: 16px 0;">
+                        <p style="margin: 0;">アメリカの文化について、どの程度知っていますか？ <span style="color: red;">*</span></p>
+                        <ul class="answer-container likert" style="margin-top: 6px; font-size: 17px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif;">
+                            <li class="labels1">全く知らない</li>
+                            <li><input type="radio" name="fam_us" value="1" required /></li>
+                            <li><input type="radio" name="fam_us" value="2" /></li>
+                            <li><input type="radio" name="fam_us" value="3" /></li>
+                            <li><input type="radio" name="fam_us" value="4" /></li>
+                            <li><input type="radio" name="fam_us" value="5" /></li>
+                            <li><input type="radio" name="fam_us" value="6" /></li>
+                            <li><input type="radio" name="fam_us" value="7" /></li>
+                            <li class="labels1">とてもよく知っている</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin: 16px 0;">
+                        <p style="margin: 0;">写真や視覚芸術（撮影・編集・絵画・デザインなど）に、どの程度慣れ親しんでいますか？ <span style="color: red;">*</span></p>
+                        <ul class="answer-container likert" style="margin-top: 6px; font-size: 17px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif;">
+                            <li class="labels1">全くない</li>
+                            <li><input type="radio" name="fam_visual" value="1" required /></li>
+                            <li><input type="radio" name="fam_visual" value="2" /></li>
+                            <li><input type="radio" name="fam_visual" value="3" /></li>
+                            <li><input type="radio" name="fam_visual" value="4" /></li>
+                            <li><input type="radio" name="fam_visual" value="5" /></li>
+                            <li><input type="radio" name="fam_visual" value="6" /></li>
+                            <li><input type="radio" name="fam_visual" value="7" /></li>
+                            <li class="labels1">とても慣れている</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="text-container" style="margin-top: 20px;">
+                <div style="max-width: 650px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px;">
+                    <p style="margin: 0;">今回ご覧いただいた画像の中に、見覚えのあるものはありましたか？ <span style="color: red;">*</span></p>
+                    <ul class="mc-list" style="font-size: 15px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif; margin-top: 6px;">
+                        <li>
+                            <label><input type="radio" name="img_familiar" value="yes" required /> はい（自由記入）</label>
+                            <input type="text" id="img_familiar_spec" style="max-width: 400px; margin-left: 10px;" />
+                        </li>
+                        <li>
+                            <label><input type="radio" name="img_familiar" value="no" /> いいえ</label>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- demographics/comments moved to separate page (postTest2) -->
+
+            <p id="error" class="help-text" style="display: none; color: red; text-align: center; margin: 20px auto; max-width: 650px;">次のページへ進む前に、すべての質問にご回答ください</p>
+            {{# buttonText }}
+            <button id="next">{{ buttonText }}</button>
+            {{/ buttonText }}
+            {{^ buttonText }}
+            <button id="next">Next</button>
+            {{/ buttonText }}
+            </form>
+        </script>
+
+        <!-- post test view (page 2: demographics & comments) -->
+        <script id="demographics-view" type="text/html">
+            <div class="view ">
+                {{# title }}
+                <h1>{{ title }}</h1>
+                {{/ title }}
+                <form>
+                <section class="text-container">
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">あなたの性別を教えてください <span style="color: red;">*</span></p>
+                    <ul class="mc-list" style="font-size: 15px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif; margin-top: 6px;">
+                        <li><label><input type="radio" name="gender" value="female" required /> 女性</label></li>
+                        <li><label><input type="radio" name="gender" value="male" /> 男性</label></li>
+                        <li><label><input type="radio" name="gender" value="nonbinary" /> ノンバイナリー</label></li>
+                        <li><label><input type="radio" name="gender" value="other" /> その他（自由記入）</label> <input type="text" id="gender_other" style="max-width: 300px; margin-left: 10px;" /></li>
+                    </ul>
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">あなたの年齢を入力してください <span style="color: red;">*</span></p>
+                    <input type="number" name="age" min="18" max="110" id="age" required style="max-width: 300px; margin-top: 6px;" />
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">日本に何年住んでいましたか？ <span style="color: red;">*</span></p>
+                    <input type="number" id="years_lived" min="0" required style="max-width: 300px; margin-top: 6px;" />
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">視覚の状態について、最も近いものを選択してください <span style="color: red;">*</span></p>
+                    <ul class="mc-list" style="font-size: 15px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif; margin-top: 6px;">
+                        <li><label><input type="radio" name="vision" value="normal" required /> 正常視</label></li>
+                        <li><label><input type="radio" name="vision" value="corrected" /> 矯正視（眼鏡・コンタクト等）</label></li>
+                        <li><label><input type="radio" name="vision" value="color_def" /> 色覚に違いがある</label></li>
+                        <li><label><input type="radio" name="vision" value="other" /> その他（自由記入）</label> <input type="text" id="vision_other" style="max-width: 300px; margin-left: 10px;" /></li>
+                    </ul>
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;"> 現在お住まいの国を選択してください <span style="color: red;">*</span></p>
+                    <ul class="mc-list" style="font-size: 15px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif; margin-top: 6px;">
+                        <li><label><input type="radio" name="country" value="jp" required /> 日本</label></li>
+                        <li><label><input type="radio" name="country" value="us" /> アメリカ</label></li>
+                        <li><label><input type="radio" name="country" value="other" /> その他（自由記入）</label> <input type="text" id="country_other" style="max-width: 300px; margin-left: 10px;" /></li>
+                    </ul>
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">あなたが家庭で主に使用している言語は何ですか？（複数選択可） <span style="color: red;">*</span></p>
+                    <ul class="mc-list" style="font-size: 15px; line-height: 27px; font-family: 'Lato','Noto Sans', sans-serif; margin-top: 6px;">
+                        <li><label><input type="checkbox" name="native_lang" value="jp" /> 日本語</label></li>
+                        <li><label><input type="checkbox" name="native_lang" value="us" /> 英語</label></li>
+                        <li><label><input type="checkbox" name="native_lang" value="other" /> その他（自由記入）</label> <input type="text" id="native_lang_other" style="max-width: 300px; margin-left: 10px;" /></li>
+                    </ul>
+                    </div>
+    
+                    <div style="margin: 16px 0;">
+                    <p style="margin: 0; max-width: none;">この研究について、ご意見やご感想があれば自由にご記入ください </p>
+                    <textarea id="post_comments" rows="4" style="max-width: 650px; width: 100%; margin-top: 6px;"></textarea>
+                    </div>
+                </section>
+    
+                <p id="error" class="help-text" style="display: none; color: red; text-align: center; margin: 20px auto; max-width: 650px;">次のページへ進む前に、すべての質問にご回答ください </p>
+                <button id="next">次へ進む</button>
+                </form>
+                </div>
+            </script>
+
+        <!-- Thanks View -->
+        <script id="thanks-view" type="x-tmpl-mustache">
+        <div class="view thanks-templ">
+            <h4 class="warning-message">Submitting the data
+                <div class="loader"></div>
+            </h4>
+            {{# thanksMessage }}
+            <h1 class="thanks-message nodisplay">{{ thanksMessage }}</h1>
+            {{/ thanksMessage }}
+            {{^ thanksMessage }}
+            <h1 class="thanks-message nodisplay">Thank you for taking part in this experiment!</h1>
+            {{/ thanksMessage }}
+            {{# extraMessage }}
+            <h2 class="extra-message nodisplay">{{{ extraMessage }}}</h2>
+            {{/ extraMessage }}
+        </div>
+        </script>
+    </body>
+</html>
